@@ -1,0 +1,57 @@
+name: Android build
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      # The repo is kept flat (all files in one folder) so it can be uploaded
+      # from an iPad. This step rebuilds the real folder layout.
+      - name: Arrange files
+        run: |
+          mkdir -p www/fonts resources
+          cp index.html www/
+          cp *.woff OFL-*.txt www/fonts/
+          cp icon.png icon-foreground.png icon-background.png splash.png resources/
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create Android project
+        run: npx cap add android
+
+      - name: Generate icons and splash (non-fatal)
+        run: |
+          npm install --no-save @capacitor/assets
+          npx capacitor-assets generate --android --assetPath resources || echo "icon generation skipped"
+
+      - name: Lock to portrait
+        run: sed -i '0,/<activity/s//<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Sync web assets
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: animal-sound-safari-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
