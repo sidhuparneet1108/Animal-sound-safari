@@ -1,0 +1,25 @@
+{
+  "appId": "com.example.animalsoundsafari",
+  "appName": "Animal Sound Safari",
+  "webDir": "www",
+  "backgroundColor": "#DFF3FC",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "allowsLinkPreview": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}
