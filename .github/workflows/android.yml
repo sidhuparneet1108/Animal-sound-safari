@@ -19,7 +19,11 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      # GitHub's ubuntu runners already ship with the Android SDK, so the
+      # separate setup-android action is not needed. Just accept licenses so
+      # Gradle can download any missing SDK piece.
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       # The repo is kept flat (all files in one folder) so it can be uploaded
       # from an iPad. This step rebuilds the real folder layout.
