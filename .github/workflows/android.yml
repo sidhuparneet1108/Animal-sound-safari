@@ -48,6 +48,31 @@ jobs:
       - name: Lock to portrait
         run: sed -i '0,/<activity/s//<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
 
+      # Give the WebView more memory headroom and force GPU compositing.
+      # Idempotent (safe to run twice) and non-fatal (the build continues even
+      # if the manifest layout ever changes).
+      - name: Native tuning (largeHeap, hardwareAccelerated)
+        run: |
+          python3 - <<'PY' || echo "manifest tuning skipped"
+          import re
+          p = "android/app/src/main/AndroidManifest.xml"
+          s = open(p, encoding="utf-8").read()
+          m = re.search(r"<application\b[^>]*>", s)
+          if not m:
+              raise SystemExit("no <application> tag found")
+          tag = new = m.group(0)
+          for attr in ("largeHeap", "hardwareAccelerated"):
+              full = 'android:%s="true"' % attr
+              if re.search(r'android:%s="[^"]*"' % attr, new):
+                  new = re.sub(r'android:%s="[^"]*"' % attr, full, new)
+              else:
+                  new = new.replace("<application", "<application " + full, 1)
+          s = s.replace(tag, new, 1)
+          open(p, "w", encoding="utf-8").write(s)
+          print("patched:", new.replace("\n", " ")[:200])
+          PY
+          grep -n 'largeHeap\|hardwareAccelerated' android/app/src/main/AndroidManifest.xml || echo "WARNING: attributes not found in manifest"
+
       - name: Sync web assets
         run: npx cap sync android
 
