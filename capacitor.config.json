@@ -15,11 +15,5 @@
     "contentInset": "never",
     "scrollEnabled": false,
     "allowsLinkPreview": false
-  },
-  "plugins": {
-    "SystemBars": {
-      "insetsHandling": "native",
-      "initialViewportFitValueHint": "cover"
-    }
   }
 }
