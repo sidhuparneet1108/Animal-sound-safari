@@ -1,4 +1,5 @@
 name: Android build
+# Debug APK for testing on your own phone. Uses Google TEST ads only.
 on:
   push:
     branches: [main, master]
@@ -34,6 +35,13 @@ jobs:
           cp *.woff OFL-*.txt www/fonts/
           cp icon.png icon-foreground.png icon-background.png splash.png resources/
 
+      # Debug build = Google's TEST ads only (safe to tap). Make sure of it.
+      - name: Check ads are in TEST mode
+        run: |
+          n=$(grep -c 'var ADS_TEST_MODE = true;' www/index.html || true)
+          echo "TEST-mode lines found: $n"
+          [ "$n" = "1" ] || { echo "ERROR: expected exactly one 'var ADS_TEST_MODE = true;' line in index.html"; exit 1; }
+
       - name: Install dependencies
         run: npm install
 
@@ -45,33 +53,77 @@ jobs:
           npm install --no-save @capacitor/assets
           npx capacitor-assets generate --android --assetPath resources || echo "icon generation skipped"
 
-      - name: Lock to portrait
-        run: sed -i '0,/<activity/s//<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
-
-      # Give the WebView more memory headroom and force GPU compositing.
-      # Idempotent (safe to run twice) and non-fatal (the build continues even
-      # if the manifest layout ever changes).
-      - name: Native tuning (largeHeap, hardwareAccelerated)
+      # Portrait lock, memory headroom, GPU drawing, AdMob App ID, and removal of
+      # the advertising-ID permission (apps for children must not use it).
+      # Safe to run twice. Stops the build loudly if the AdMob entries are missing.
+      - name: Configure AndroidManifest (AdMob, portrait, memory)
         run: |
-          python3 - <<'PY' || echo "manifest tuning skipped"
-          import re
+          python3 - <<'PY'
+          import re, sys
+          ADMOB_APP_ID = "ca-app-pub-1719282988189198~5009440555"   # the app's real AdMob App ID (safe with test ad units)
           p = "android/app/src/main/AndroidManifest.xml"
           s = open(p, encoding="utf-8").read()
+
+          m = re.search(r"<manifest\b[^>]*>", s)
+          if not m:
+              sys.exit("ERROR: no <manifest> tag found")
+          if "xmlns:tools=" not in m.group(0):
+              s = s.replace(m.group(0), m.group(0).replace("<manifest", '<manifest xmlns:tools="http://schemas.android.com/tools"', 1), 1)
+
+          def set_attr(tag, attr, value):
+              full = 'android:%s="%s"' % (attr, value)
+              if re.search(r'android:%s="[^"]*"' % attr, tag):
+                  return re.sub(r'android:%s="[^"]*"' % attr, full, tag)
+              return re.sub(r"^<(\w+)", lambda mm: "<%s %s" % (mm.group(1), full), tag, count=1)
+
           m = re.search(r"<application\b[^>]*>", s)
           if not m:
-              raise SystemExit("no <application> tag found")
-          tag = new = m.group(0)
-          for attr in ("largeHeap", "hardwareAccelerated"):
-              full = 'android:%s="true"' % attr
-              if re.search(r'android:%s="[^"]*"' % attr, new):
-                  new = re.sub(r'android:%s="[^"]*"' % attr, full, new)
-              else:
-                  new = new.replace("<application", "<application " + full, 1)
-          s = s.replace(tag, new, 1)
+              sys.exit("ERROR: no <application> tag found")
+          tag = m.group(0)
+          for a in ("largeHeap", "hardwareAccelerated"):
+              tag = set_attr(tag, a, "true")
+          s = s.replace(m.group(0), tag, 1)
+
+          m = re.search(r"<activity\b[^>]*>", s)
+          if not m:
+              sys.exit("ERROR: no <activity> tag found")
+          s = s.replace(m.group(0), set_attr(m.group(0), "screenOrientation", "portrait"), 1)
+
+          if "com.google.android.gms.ads.APPLICATION_ID" not in s:
+              meta = '    <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="%s"/>\n' % ADMOB_APP_ID
+              if "</application>" not in s:
+                  sys.exit("ERROR: no </application> found")
+              s = s.replace("</application>", meta + "    </application>", 1)
+
+          if 'com.google.android.gms.permission.AD_ID' not in s:
+              perm = '    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>\n'
+              s = s.replace("</manifest>", perm + "</manifest>", 1)
+
           open(p, "w", encoding="utf-8").write(s)
-          print("patched:", new.replace("\n", " ")[:200])
+
+          # Loud checks: the build must stop here if anything is missing.
+          s = open(p, encoding="utf-8").read()
+          need = [
+              'com.google.android.gms.ads.APPLICATION_ID',
+              ADMOB_APP_ID,
+              'com.google.android.gms.permission.AD_ID',
+              'tools:node="remove"',
+              'xmlns:tools=',
+              'android:screenOrientation="portrait"',
+              'android:largeHeap="true"',
+              'android:hardwareAccelerated="true"',
+          ]
+          missing = [x for x in need if x not in s]
+          if missing:
+              sys.exit("ERROR: manifest is missing: %s" % missing)
+          if s.count("com.google.android.gms.ads.APPLICATION_ID") != 1 or s.count("permission.AD_ID") != 1:
+              sys.exit("ERROR: duplicated AdMob entries in manifest")
+          print("Manifest OK")
           PY
-          grep -n 'largeHeap\|hardwareAccelerated' android/app/src/main/AndroidManifest.xml || echo "WARNING: attributes not found in manifest"
+          echo "----- AndroidManifest.xml -----"
+          cat android/app/src/main/AndroidManifest.xml
+          echo "----- checks -----"
+          grep -n 'APPLICATION_ID\|AD_ID\|largeHeap\|hardwareAccelerated\|screenOrientation' android/app/src/main/AndroidManifest.xml
 
       - name: Sync web assets
         run: npx cap sync android
@@ -79,6 +131,13 @@ jobs:
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Info - permissions in the built APK (should NOT list AD_ID)
+        continue-on-error: true
+        run: |
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT2" dump permissions android/app/build/outputs/apk/debug/*.apk || true
+          if "$AAPT2" dump permissions android/app/build/outputs/apk/debug/*.apk | grep -q 'AD_ID'; then echo "WARNING: AD_ID permission is still present"; else echo "OK: no AD_ID permission"; fi
 
       - uses: actions/upload-artifact@v4
         with:
