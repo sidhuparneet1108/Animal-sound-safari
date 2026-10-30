@@ -1,0 +1,77 @@
+name: Create upload key
+# Run ONCE, by hand. Makes your Play Store "upload key" and gives you the 4 secret values.
+on:
+  workflow_dispatch:
+    inputs:
+      allow_public_repo:
+        description: "Only type YES if this repository is PUBLIC and you accept the risk (see README-FIRST.txt)"
+        required: false
+        default: "no"
+
+jobs:
+  make-key:
+    runs-on: ubuntu-latest
+    env:
+      REPO_PRIVATE: ${{ github.event.repository.private }}
+      ALLOW_PUBLIC: ${{ inputs.allow_public_repo }}
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Safety check - is this repository private?
+        run: |
+          echo "Repository private: $REPO_PRIVATE"
+          if [ "$REPO_PRIVATE" != "true" ] && [ "$ALLOW_PUBLIC" != "YES" ]; then
+            echo "STOPPED: this repository is PUBLIC. Anyone with a GitHub account could download the key file for a few minutes."
+            echo "Make the repository private first (Settings > General > Danger Zone > Change visibility), then run this again."
+            exit 1
+          fi
+
+      - name: Generate keystore and passwords
+        run: |
+          mkdir -p out
+          PW=$(openssl rand -hex 16)
+          echo "::add-mask::$PW"
+          keytool -genkeypair -v -storetype PKCS12 \
+            -keystore out/upload-keystore.jks -alias upload \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$PW" -keypass "$PW" \
+            -dname "CN=Animal Sound Safari, O=Pixydust" > /dev/null
+          B64=$(base64 -w0 out/upload-keystore.jks)
+          echo "::add-mask::$B64"
+          {
+            echo "ANIMAL SOUND SAFARI - UPLOAD KEY - KEEP THIS FILE SAFE AND PRIVATE"
+            echo "Created: $(date -u +%Y-%m-%d)"
+            echo
+            echo "Create these 4 GitHub repository secrets (Settings > Secrets and variables > Actions > New repository secret):"
+            echo
+            echo "ANDROID_KEYSTORE_PASSWORD = $PW"
+            echo "ANDROID_KEY_PASSWORD      = $PW"
+            echo "ANDROID_KEY_ALIAS         = upload"
+            echo
+            echo "ANDROID_KEYSTORE_BASE64 (one very long line, copy all of it):"
+            echo "$B64"
+          } > out/KEYS.txt
+          keytool -list -keystore out/upload-keystore.jks -storepass "$PW" | head -6
+          echo "Key created. Secrets are NOT shown in this log on purpose."
+
+      - name: What to do next
+        run: |
+          echo "=============================================================="
+          echo "1. Open the Summary page of this run, scroll to Artifacts."
+          echo "2. Download 'upload-key-KEEP-SAFE' and unzip it."
+          echo "3. BACK IT UP in two places (cloud drive + offline copy)."
+          echo "4. Create the 4 repository secrets using KEYS.txt."
+          echo "5. DELETE the artifact from the run page."
+          echo "It deletes itself after 5 days anyway."
+          echo "=============================================================="
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: upload-key-KEEP-SAFE
+          path: |
+            out/upload-keystore.jks
+            out/KEYS.txt
+          retention-days: 5
