@@ -1,0 +1,91 @@
+ANIMAL SOUND SAFARI - GOOGLE PLAY STORE TEXT AND CHEAT SHEET
+Prepared 2026-10-22. This is a helper, not legal advice. Check every answer against the CURRENT Play Console wording.
+
+==================================================
+1. SHORT DESCRIPTION (max 80 characters)
+==================================================
+Listen to animal sounds and tap the right animal. For ages 2-4!
+
+(Length: 63 characters)
+
+==================================================
+2. FULL DESCRIPTION (max 4000 characters)
+==================================================
+Can your little one tell a cow from a cat just by listening?
+
+Animal Sound Safari is a gentle listening game for toddlers and preschoolers. Robo the friendly robot plays an animal sound, and your child taps the animal that made it. Every right answer earns a star, a cheerful chime and a happy cheer from Robo!
+
+HOW IT WORKS
+- Listen to the animal sound and look at the animal cards.
+- Tap the animal that makes the sound.
+- Collect stars and complete adventures. Each new adventure gets a little trickier.
+- Meet new animal friends and fill up your own Zoo.
+
+WHAT CHILDREN WILL ENJOY
+- 50 animals to discover, from farm friends to jungle and ocean animals
+- Animal sounds based on recordings (credits are in the app)
+- Fun facts for each animal in the My Zoo book, which Robo can read out loud
+- Big, colorful buttons made for small fingers
+- Friendly spoken feedback - no reading needed
+- Short adventures that fit a toddler's attention span
+
+MADE FOR LITTLE ONES
+- No accounts and no sign-up
+- Works offline - sounds are stored in the app
+- Game progress is saved only on your device
+- Reset progress is behind a simple grown-up check
+
+ABOUT ADS
+This app contains ads. Ads are set up for children (non-personalized, general-audience content only) and appear only on the "Adventure complete" screen and when moving on from it - never in the middle of a question. A grown-up may like to sit with younger children. See our privacy policy for details.
+
+Animal icons: Twemoji (CC-BY 4.0). Sound credits are listed in the app under "Sound credits".
+
+Download Animal Sound Safari and start the adventure!
+
+==================================================
+3. CATEGORY AND TAGS (suggestions)
+==================================================
+App or game: Game (or App) - choose what fits best in Play Console.
+Category: Educational (alternative: Casual). Also pick the "Family" / "Kids" options if offered.
+Tags (pick the ones Play Console offers): Educational, Kids / Preschool, Animals, Audio / Sound games, Casual.
+Contact email: (your own)
+Privacy policy URL: https://USERNAME.github.io/REPO/privacy.html   (replace USERNAME and REPO; fill in YOUR_EMAIL_HERE in privacy.html first)
+
+==================================================
+4. WHAT TO ANSWER IN PLAY CONSOLE (cheat sheet)
+==================================================
+Policy > App content:
+- Privacy policy: add the URL above.
+- Ads: YES, the app contains ads.
+- App access: all functionality is available without special access (no login).
+- Target audience and content: choose ONLY age groups that match. Main group: "5 and under" (under 5). Because it targets children, the Families Policy applies. Do not tick older groups unless you really mean it.
+- Appeals to children: yes.
+- News app: no. Government app: no. Financial features: none. Health features: none.
+- Data safety form: the app has no accounts and does not collect personal data itself. BUT the Google AdMob SDK may collect and share some data (for example device or other IDs, app interactions, diagnostics) for advertising and analytics. Do NOT guess. Follow Google's current guidance for AdMob here: https://support.google.com/admob/answer/10179654 and answer according to what it says for the SDK version you ship. Data is encrypted in transit: check Google's guidance. Users can request deletion: the app stores nothing on servers.
+- Advertising ID declaration: the app does NOT use the advertising ID (the permission is removed in the build). Answer accordingly.
+- Content rating (IARC questionnaire): answer honestly: no violence, no sexual content, no user interaction, no sharing of location, no purchases. Expected result: Everyone / PEGI 3 (confirm in the tool).
+- Families Policy / Designed for Families: the ads must come from certified ad networks, be child-appropriate, and not use personalized ads. The app tags requests as child-directed, under age of consent and G-rated. Check the Play Console "Families" requirements page for any new items.
+- Store listing: upload store-icon-512.png (icon), feature-graphic-1024x500.png and screenshot-1..4.png (phone screenshots, 1080x1920).
+
+OPEN ITEM - EU CONSENT: Google's EU User Consent Policy / UMP (consent message) may apply if the app is distributed in the EEA/UK. For child-directed apps the rules are different. Check AdMob > Privacy & messaging and Google's current guidance. This app does NOT implement a consent form. This is NOT handled yet.
+
+==================================================
+5. HONEST WARNINGS BEFORE YOU PUBLISH
+==================================================
+A) Four animals use stand-in pictures because Twemoji has no emoji for them:
+   - Hyena is shown as a plain dog
+   - Walrus is shown as a mammoth
+   - Seagull is shown as a generic bird
+   - Cheetah is shown as a leopard
+   A child (or parent) could notice. Consider custom artwork, or removing those four animals, before launch. Do not describe them as accurate in screenshots or text.
+
+B) Eleven sound clips are NOT license-verified:
+   fox, rhinoceros, zebra, kangaroo, koala, hyena, gorilla, panda, walrus, cheetah, raccoon.
+   They came from YouTube channels and other places supplied by you (e.g. the ProSounds channel). I could NOT verify that you may use them in a commercial, ad-supported app. YouTube downloads are usually NOT free to reuse. Replace them with properly licensed recordings (CC0 / CC-BY / purchased) or remove those animals, before publishing.
+   Also note: the cheetah clip is a PURR (not the typical cheetah chirp), and the gorilla and rhino clips are AI-GENERATED, not real recordings. The listing text above avoids saying 'real recordings' for this reason. Keep it that way unless you replace those clips.
+
+C) Other sounds are credited in the app under "Sound credits" (CC0, CC BY, CC BY-SA). CC BY-SA clips were edited; check that sharing the app under those terms is acceptable for you.
+
+D) Ads: you must never tap real ads on your own device. The debug build shows Google TEST ads only.
+
+E) Nothing here is legal advice and nothing was tested on a real phone or a real Play account.

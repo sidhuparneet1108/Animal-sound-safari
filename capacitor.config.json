@@ -1,19 +1,13 @@
 {
-  "appId": "com.example.animalsoundsafari",
+  "appId": "com.pixydust.animalsoundsafari",
   "appName": "Animal Sound Safari",
   "webDir": "www",
   "backgroundColor": "#DFF3FC",
   "server": {
-    "androidScheme": "https",
-    "iosScheme": "capacitor"
+    "androidScheme": "https"
   },
   "android": {
     "allowMixedContent": false,
     "webContentsDebuggingEnabled": false
-  },
-  "ios": {
-    "contentInset": "never",
-    "scrollEnabled": false,
-    "allowsLinkPreview": false
   }
 }

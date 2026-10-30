@@ -391,6 +391,38 @@
 
   @keyframes gentleBob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-2.5px);} }
 
+  /* ---------- PARENT GATE ---------- */
+  .gate-card{ gap:8px; }
+  .gate-icon{ font-size:2.2rem; line-height:1; }
+  .gate-title{ margin:0; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:1.5rem; color:var(--ink); }
+  .gate-sub{ margin:0; font-weight:700; font-size:.88rem; color:var(--ink-soft); }
+  .gate-q{ margin:6px 0 8px; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:2.1rem; color:var(--ink); }
+  .gate-answers{ display:flex; gap:12px; justify-content:center; width:100%; }
+  .gate-btn{
+    flex:1; min-width:72px; min-height:64px; border:none; border-radius:20px; cursor:pointer;
+    font-family:'Baloo 2',sans-serif; font-weight:800; font-size:1.8rem; color:#fff;
+    background:linear-gradient(180deg,var(--robo-blue),var(--robo-blue-dark));
+    box-shadow:0 5px 0 #1F7799, 0 9px 14px rgba(var(--shadow-tint),.22);
+  }
+  .gate-btn:active{ transform:translateY(4px); box-shadow:0 1px 0 #1F7799; }
+  .gate-btn:focus-visible, .gate-cancel:focus-visible{ outline:3px solid var(--coral); outline-offset:2px; }
+  .gate-cancel{ min-height:48px; min-width:110px; font-size:.95rem; margin-top:2px; }
+  .modal-backdrop.show .gate-card.shake{ animation: shake .45s ease; }
+
+  /* ---------- ROOM FOR THE BOTTOM BANNER (level-complete screen only) ---------- */
+  #level-screen.ads-pad{ padding-bottom: var(--ads-pad, 0px); }
+  #level-home-btn{ min-height:48px; }
+  @media (max-height:700px){
+    #level-screen .stars-row{ margin:6px 0; }
+    #level-screen .stat-row{ margin:4px 0 14px; }
+  }
+  @media (max-height:600px){
+    #level-screen .robo{ width:64px; height:70px; }
+    #level-screen .stars-row{ font-size:2rem; margin:2px 0; }
+    #level-screen .stat-row{ margin:2px 0 10px; }
+    #level-screen .title{ font-size:1.5rem !important; margin:0; }
+  }
+
   /* hidden diagnostics overlay (5 quick taps on the credits line) */
   #asf-diag{ position:fixed; inset:0; z-index:9999; background:rgba(20,28,40,.96); color:#E8F0F6; font:12px/1.35 monospace; padding:12px; overflow:auto; display:none; -webkit-user-select:text; user-select:text; }
   #asf-diag.show{ display:block; }
@@ -509,6 +541,18 @@
     </div>
   </div>
 
+
+  <!-- PARENT GATE (for Reset progress and anything that leaves the game) -->
+  <div class="modal-backdrop" id="gate-modal" aria-hidden="true">
+    <div class="rules-card gate-card" role="dialog" aria-modal="true" aria-labelledby="gate-title">
+      <div class="gate-icon" aria-hidden="true">🔒</div>
+      <h2 class="gate-title" id="gate-title">Ask a grown-up</h2>
+      <p class="gate-sub">Grown-ups only. Tap the right answer:</p>
+      <p class="gate-q" id="gate-q">What is 7 + 6?</p>
+      <div class="gate-answers" id="gate-answers"></div>
+      <button type="button" class="pill-btn gate-cancel" id="gate-cancel">Cancel</button>
+    </div>
+  </div>
 
   <!-- HOW-TO-PLAY / RULES MODAL -->
   <div class="modal-backdrop" id="rules-modal">
@@ -883,13 +927,14 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
   /* =====================================================================
      AUDIO — layered synthesis primitives (safety-net fallback) + real clips
      ===================================================================== */
+  var adBusy = false;   // true only while a full-screen ad is on its way up / showing: no sound, no timers
   var audioCtx = null;
   function ensureAudio(){
     if(!audioCtx){
       try{ var Ctx = window.AudioContext || window.webkitAudioContext; audioCtx = new Ctx(); }
       catch(e){ audioCtx = null; console.warn('[ASF] AudioContext unavailable; will use <audio> fallback', e); }
     }
-    if(audioCtx && audioCtx.state !== 'running'){
+    if(audioCtx && audioCtx.state !== 'running' && !adBusy){
       try{ var rp = audioCtx.resume(); if(rp && rp.catch) rp.catch(function(e){ console.warn('[ASF] resume() rejected', e); }); }catch(e){ console.warn('[ASF] resume() failed', e); }
     }
   }
@@ -1203,6 +1248,7 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
 
   var liveUtter = null; // keeps the one active utterance referenced so the engine still fires its events
   function speak(text, onend){
+    if(adBusy) return;
     if(state.muted || !ttsOK()){ if(onend) onend(); return; }
     try{
       window.speechSynthesis.cancel();
@@ -1223,7 +1269,7 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
   var speakTimer = null;
   function speakAfter(delayMs, text){
     if(speakTimer) clearTimeout(speakTimer);
-    speakTimer = setTimeout(function(){ speak(text); }, delayMs);
+    speakTimer = setTimeout(function(){ if(adBusy) return; speak(text); }, delayMs);
   }
 
   /* Small "party popper" burst that appears right at the tapped card, just
@@ -1437,7 +1483,7 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
   }
 
   /* ---------------- SCREEN HELPERS ---------------- */
-  function showScreen(id){ crumb('screen ' + id); document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); }); document.getElementById(id).classList.add('active'); }
+  function showScreen(id){ crumb('screen ' + id); try{ Ads.onScreen(id); }catch(e){} document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); }); document.getElementById(id).classList.add('active'); }
   function updateStartStats(){ document.getElementById('stat-level').textContent = state.level; document.getElementById('stat-stars').textContent = state.totalStars; }
   function updateHud(){
     document.getElementById('hud-stars').textContent = state.totalStars;
@@ -1650,10 +1696,12 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
     burstConfetti(canvas.clientWidth/2, canvas.clientHeight*0.32, 90);
     playLevelFanfare();
     speakAfter(750, 'Adventure complete! Great listening!');
+    try{ Ads.onLevelComplete(); }catch(e){}
   }
 
   function beginGame(){
     clearRoundTimers();
+    try{ Ads.onGameStart(); }catch(e){}
     ensureAudio();
     state.round=0; state.correctThisLevel=0; state.recentIds=[]; state.lives=STARTING_LIVES;
     updateHud();
@@ -1849,9 +1897,318 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
   document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && factOpenId !== null) closeFactCard(); });
   document.getElementById('zoo-back').addEventListener('click', closeFactCard);
 
+  /* =====================================================================
+     PARENT GATE — a tiny "ask a grown-up" sum before anything a small child
+     should not do alone (resetting progress, or opening any outside link).
+     ===================================================================== */
+  var Gate = (function(){
+    var modal = document.getElementById('gate-modal');
+    var card = modal.querySelector('.gate-card');
+    var qEl = document.getElementById('gate-q');
+    var ansEl = document.getElementById('gate-answers');
+    var pending = null, lastFocus = null, locked = false;
+    function rnd(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); }
+    function isOpen(){ return modal.classList.contains('show'); }
+    function hide(){
+      modal.classList.remove('show'); modal.setAttribute('aria-hidden', 'true');
+      card.classList.remove('shake'); pending = null; locked = false;
+      try{ if(lastFocus && lastFocus.focus) lastFocus.focus(); }catch(e){}
+      lastFocus = null;
+    }
+    function answer(ok){
+      if(locked) return;
+      if(ok){
+        var cb = pending; hide(); crumb('gate pass');
+        if(cb){ try{ cb(); }catch(e){ console.warn('[ASF] gate callback failed', e); } }
+      } else {
+        locked = true; crumb('gate wrong');
+        card.classList.add('shake');
+        setTimeout(hide, 450);
+      }
+    }
+    function open(onPass){
+      pending = onPass; locked = false;
+      var a = rnd(3, 9), b = rnd(3, 9), sum = a + b;
+      var opts = [sum];
+      while(opts.length < 3){
+        var c = sum + rnd(1, 3) * (Math.random() < 0.5 ? -1 : 1);
+        if(c >= 2 && opts.indexOf(c) < 0) opts.push(c);
+      }
+      for(var i = opts.length - 1; i > 0; i--){ var j = rnd(0, i), t = opts[i]; opts[i] = opts[j]; opts[j] = t; }
+      qEl.textContent = 'What is ' + a + ' + ' + b + '?';
+      ansEl.innerHTML = '';
+      opts.forEach(function(v){
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'gate-btn'; btn.textContent = v;
+        btn.addEventListener('click', function(){ answer(v === sum); });
+        ansEl.appendChild(btn);
+      });
+      lastFocus = document.activeElement;
+      modal.classList.add('show'); modal.setAttribute('aria-hidden', 'false');
+      crumb('gate open');
+      try{ ansEl.firstChild.focus(); }catch(e){}
+    }
+    document.getElementById('gate-cancel').addEventListener('click', hide);
+    modal.addEventListener('click', function(e){ if(e.target === modal) hide(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && isOpen()) hide(); });
+    return { open: open, isOpen: isOpen };
+  })();
+
+  /* =====================================================================
+     ADS — Google AdMob through the Capacitor plugin. ANDROID APP ONLY.
+     On the web / in a browser everything below does nothing at all.
+
+     Rules this module follows (kids' app, Google Play Families policy):
+       - the SDK is told the app is child-directed, under-age, rated G, and
+         every request asks for non-personalized ads;
+       - a banner appears ONLY on the "Adventure complete!" screen, and only
+         from the 2nd completed adventure of a play session on;
+       - a full-screen ad is allowed ONLY when the child taps "Next adventure"
+         or "Home" on that screen, at most once per 2 completed adventures, at
+         least 90 s apart, never on the first adventure, never mid-question;
+       - if an ad is missing, slow, offline or fails, the game just carries on.
+
+     TEST / REAL switch: the line below. "true" = Google's sample ads (safe to
+     tap). The release workflow changes that one word to false.
+     ===================================================================== */
+  var Ads = (function(){
+    var ADS_TEST_MODE = true;
+    var TEST_IDS = { banner: 'ca-app-pub-3940256099942544/6300978111', interstitial: 'ca-app-pub-3940256099942544/1033173712' };
+    var REAL_IDS = { banner: 'ca-app-pub-1719282988189198/2020937253', interstitial: 'ca-app-pub-1719282988189198/8329738466' };
+    var IDS = ADS_TEST_MODE ? TEST_IDS : REAL_IDS;
+
+    var MIN_GAP_MS = 90000;            // minimum time between two full-screen ads
+    var EVERY_LEVELS = 2;              // at most one full-screen ad per 2 completed adventures
+    var SAFETY_MS = 4000;              // if the ad has not appeared by then, carry on without it
+    var WATCHDOG_MS = 120000;          // last-resort: never stay stuck behind an ad that never reports back
+    var STALE_MS = 50 * 60 * 1000;     // preloaded ads expire after 1 hour; reload before that
+
+    var plugin = null, listening = false;
+    var initState = 0, nextInitAt = 0;         // 0 = not yet, 1 = starting, 2 = ready, -1 = failed (retry later)
+    var levelsDone = 0, levelsSinceAd = 0, lastAdAt = 0;
+    var interReady = false, interLoading = false, interId = null, interLoadedAt = 0, nextPrepAt = 0;
+    var bannerWanted = false, bannerUp = false, bannerGen = 0;
+    var flow = null, lateShow = false, audioSuspended = false;
+
+    function log(t){ try{ crumb('ads ' + t); }catch(e){} }
+    function why(e){ try{ return String((e && (e.message || e.code)) || e).slice(0, 50); }catch(x){ return '?'; } }
+    function isAndroidApp(){
+      try{
+        var C = window.Capacitor;
+        if(!C || typeof C.isNativePlatform !== 'function' || !C.isNativePlatform()) return false;
+        return typeof C.getPlatform !== 'function' || C.getPlatform() === 'android';
+      }catch(e){ return false; }
+    }
+    function getPlugin(){
+      var C = window.Capacitor, p = C.Plugins && C.Plugins.AdMob;
+      /* Capacitor does not create plugin objects for you in a page without a bundler: ask for it by name. */
+      if(!p && typeof C.registerPlugin === 'function') p = C.registerPlugin('AdMob');
+      return p || null;
+    }
+    function call(name, opts){
+      try{ var r = plugin[name](opts); return (r && typeof r.then === 'function') ? r : Promise.resolve(r); }
+      catch(e){ return Promise.reject(e); }
+    }
+    function listen(evt, fn){
+      try{ var r = plugin.addListener(evt, function(d){ try{ fn(d); }catch(e){ log('listener err ' + why(e)); } }); if(r && r.catch) r.catch(function(){}); }
+      catch(e){ log('listen err ' + why(e)); }
+    }
+    function setPad(px){
+      var el = document.getElementById('level-screen');
+      if(!el) return;
+      if(px > 0){ el.style.setProperty('--ads-pad', px + 'px'); el.classList.add('ads-pad'); }
+      else { el.classList.remove('ads-pad'); el.style.removeProperty('--ads-pad'); }
+    }
+
+    /* ---- audio: everything quiet while a full-screen ad is up ---- */
+    function quiet(){
+      try{ ttsCancel(); }catch(e){}
+      try{ if(speakTimer){ clearTimeout(speakTimer); speakTimer = null; } }catch(e){}
+      try{ clearRoundTimers(); }catch(e){}
+      try{ stopClip(); }catch(e){}
+      try{ if(sharedEl) sharedEl.pause(); }catch(e){}
+      try{ var els = document.getElementsByTagName('audio'); for(var i = 0; i < els.length; i++) els[i].pause(); }catch(e){}
+      try{
+        if(audioCtx && audioCtx.state === 'running'){
+          audioSuspended = true;
+          var sp = audioCtx.suspend(); if(sp && sp.catch) sp.catch(function(){});
+        }
+      }catch(e){}
+    }
+    function unquiet(){
+      adBusy = false;
+      try{
+        if(audioCtx && audioSuspended){
+          audioSuspended = false;
+          var rp = audioCtx.resume(); if(rp && rp.catch) rp.catch(function(){});
+        }
+      }catch(e){}
+    }
+
+    /* ---- start-up: only when the child first presses Play (never at app launch) ---- */
+    function addListeners(){
+      listen('bannerAdSizeChanged', function(s){
+        var h = s && Number(s.height) > 0 ? Math.ceil(Number(s.height)) : 0;
+        if(h && bannerWanted){ setPad(h + 8); log('banner size ' + h); } else setPad(0);
+      });
+      listen('bannerAdLoaded', function(){ log('banner loaded'); });
+      listen('bannerAdFailedToLoad', function(e){ setPad(0); log('banner load fail ' + why(e)); });
+      listen('interstitialAdLoaded', function(){ log('inter loaded'); });
+      listen('interstitialAdFailedToLoad', function(e){ log('inter load fail ' + why(e)); });
+      listen('interstitialAdShowed', function(){
+        log('inter showed');
+        if(flow && !flow.done) markShown(flow);
+        else if(!flow){ lateShow = true; adBusy = true; quiet(); }
+      });
+      listen('interstitialAdFailedToShow', function(e){
+        log('inter show fail ' + why(e));
+        if(flow && !flow.done) finish(flow, 'failed to show');
+      });
+      listen('interstitialAdDismissed', function(){
+        log('inter dismissed');
+        if(flow && !flow.done) finish(flow, 'dismissed');
+        else if(lateShow){ lateShow = false; unquiet(); }
+      });
+    }
+    function init(){
+      if(initState === 1 || initState === 2 || !isAndroidApp()) return;
+      if(initState === -1 && Date.now() < nextInitAt) return;
+      initState = 1;
+      try{
+        plugin = getPlugin();
+        if(!plugin){ initState = -1; nextInitAt = Date.now() + 60000; log('no plugin'); return; }
+        if(!listening){ listening = true; addListeners(); }
+        log('init ' + (ADS_TEST_MODE ? 'TEST ids' : 'REAL ids'));
+        call('initialize', {
+          tagForChildDirectedTreatment: true,
+          tagForUnderAgeOfConsent: true,
+          maxAdContentRating: 'General'          // the plugin's spelling of "G"
+        }).then(function(){
+          initState = 2; log('init ok');
+          if(bannerWanted) showBanner();
+          if(levelsDone >= 1) prepareInterstitial();
+        }).catch(function(e){
+          initState = -1; nextInitAt = Date.now() + 60000; log('init fail ' + why(e));
+        });
+      }catch(e){ initState = -1; nextInitAt = Date.now() + 60000; log('init err ' + why(e)); }
+    }
+
+    /* ---- banner ---- */
+    function showBanner(){
+      if(bannerUp || !bannerWanted || initState !== 2) return;
+      var gen = ++bannerGen; bannerUp = true;
+      log('banner show');
+      call('showBanner', {
+        adId: IDS.banner, adSize: 'ADAPTIVE_BANNER', position: 'BOTTOM_CENTER', margin: 0,
+        isTesting: ADS_TEST_MODE, npa: true
+      }).catch(function(e){
+        if(gen === bannerGen){ bannerUp = false; setPad(0); }
+        log('banner fail ' + why(e));
+      });
+    }
+    function hideBanner(){
+      bannerWanted = false; bannerGen++; setPad(0);
+      if(!bannerUp) return;
+      bannerUp = false;
+      log('banner remove');
+      call('removeBanner').catch(function(e){ log('banner remove fail ' + why(e)); });
+    }
+
+    /* ---- interstitial: preload, then show only at a natural break ---- */
+    function prepareInterstitial(){
+      if(!isAndroidApp() || initState !== 2 || interLoading) return;
+      if(interReady && Date.now() - interLoadedAt > STALE_MS) interReady = false;
+      if(interReady || Date.now() < nextPrepAt) return;
+      interLoading = true; log('inter prepare');
+      call('prepareInterstitial', { adId: IDS.interstitial, isTesting: ADS_TEST_MODE, npa: true }).then(function(r){
+        interLoading = false; interReady = true; interLoadedAt = Date.now();
+        interId = (r && r.adUnitId) || IDS.interstitial; log('inter ready');
+      }).catch(function(e){
+        interLoading = false; interReady = false; nextPrepAt = Date.now() + 60000; log('inter load fail ' + why(e));
+      });
+    }
+    function eligible(){
+      var now = Date.now();
+      return isAndroidApp() && initState === 2 && interReady && !!interId && !flow && !lateShow &&
+        levelsDone >= 2 && levelsSinceAd >= EVERY_LEVELS &&
+        now - lastAdAt >= MIN_GAP_MS && now - interLoadedAt < STALE_MS;
+    }
+    function markShown(f){
+      if(f.shown) return;
+      f.shown = true; clearTimeout(f.safety);
+      lastAdAt = Date.now(); levelsSinceAd = 0;
+      f.watchdog = setTimeout(function(){ finish(f, 'watchdog'); }, WATCHDOG_MS);
+    }
+    function finish(f, reason){
+      if(f.done) return;
+      f.done = true; clearTimeout(f.safety); clearTimeout(f.watchdog);
+      if(flow === f) flow = null;
+      if(f.shown) lastAdAt = Date.now();
+      unquiet();                                  // sound back on and flag cleared BEFORE moving on
+      log('inter end: ' + reason);
+      try{ f.next(); }catch(e){ log('next err ' + why(e)); }
+      setTimeout(prepareInterstitial, f.shown ? 1500 : 8000);   // load the following one in the background
+    }
+
+    /* ---- hooks called by the game ---- */
+    function onGameStart(){
+      try{
+        if(!isAndroidApp()) return;
+        hideBanner();
+        init();
+      }catch(e){ log('start err ' + why(e)); }
+    }
+    function onScreen(id){
+      try{ if(id !== 'level-screen') hideBanner(); }catch(e){}
+    }
+    function onLevelComplete(){
+      try{
+        levelsDone++; levelsSinceAd++;
+        if(!isAndroidApp()) return;
+        log('level done #' + levelsDone);
+        init();
+        if(levelsDone >= 2){ bannerWanted = true; showBanner(); }
+        prepareInterstitial();
+      }catch(e){ log('level err ' + why(e)); }
+    }
+    /* Called when the child taps "Next adventure" or "Home". `next` always runs exactly once. */
+    function beforeLeave(next){
+      var ran = false;
+      function go(){ if(ran) return; ran = true; next(); }
+      if(flow){ return; }                       // a tap is already being handled
+      try{
+        hideBanner();
+        if(!eligible()){ prepareInterstitial(); go(); return; }
+        var f = flow = { done: false, shown: false, safety: null, watchdog: null, next: go };
+        var id = interId; interReady = false; interId = null;
+        adBusy = true; quiet();
+        log('inter show');
+        f.safety = setTimeout(function(){ finish(f, 'timeout'); }, SAFETY_MS);
+        call('showInterstitial', { adId: id }).then(function(){
+          if(!f.done) markShown(f);
+        }).catch(function(e){
+          log('inter show rejected ' + why(e)); finish(f, 'rejected');
+        });
+      }catch(e){
+        log('leave err ' + why(e));
+        flow = null; unquiet(); go();
+      }
+    }
+    try{
+      document.addEventListener('visibilitychange', function(){
+        /* backup for a missed "dismissed" event: the game page is visible again after the ad was shown */
+        if(!document.hidden && flow && flow.shown && !flow.done){
+          var f = flow;
+          setTimeout(function(){ if(!f.done) finish(f, 'page visible again'); }, 800);
+        }
+      });
+    }catch(e){}
+    return { onGameStart: onGameStart, onScreen: onScreen, onLevelComplete: onLevelComplete, beforeLeave: beforeLeave };
+  })();
+
   /* ---------------- EVENTS ---------------- */
   document.getElementById('play-btn').addEventListener('click', beginGame);
-  document.getElementById('next-btn').addEventListener('click', beginGame);
+  document.getElementById('next-btn').addEventListener('click', function(){ Ads.beforeLeave(beginGame); });
   document.getElementById('zoo-btn').addEventListener('click', function(){ renderZoo(); showScreen('zoo-screen'); });
   document.getElementById('zoo-back').addEventListener('click', function(){ showScreen('start-screen'); });
   function goHome(){
@@ -1861,7 +2218,7 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
     showScreen('start-screen');
   }
   document.getElementById('menu-btn').addEventListener('click', goHome);
-  document.getElementById('level-home-btn').addEventListener('click', goHome);
+  document.getElementById('level-home-btn').addEventListener('click', function(){ Ads.beforeLeave(goHome); });
 
   replayBtn.addEventListener('click', function(){
     if(state.currentAnimal && Date.now() > soundBusyUntil){
@@ -1876,10 +2233,12 @@ window.ASF_CLIPS={"bat":"SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAA
   });
 
   document.getElementById('reset-link').addEventListener('click', function(){
-    state.level=1; state.totalStars=0; state.collected={}; state.factsNew={};
-    saveProgress(); updateStartStats(); updateHud();
-    applyTheme(state.level);
-    toast('Progress reset', 'good');
+    Gate.open(function(){
+      state.level=1; state.totalStars=0; state.collected={}; state.factsNew={};
+      saveProgress(); updateStartStats(); updateHud();
+      applyTheme(state.level);
+      toast('Progress reset', 'good');
+    });
   });
 
   window.addEventListener('resize', function(){ if(confettiRAF) resizeCanvas(); });
