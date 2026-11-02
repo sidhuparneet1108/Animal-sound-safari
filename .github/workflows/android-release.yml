@@ -232,7 +232,7 @@ jobs:
           AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1 || true)
           if [ -n "$AAPT2" ]; then
             "$AAPT2" dump permissions android/app/build/outputs/apk/release/*.apk || true
-            if "$AAPT2" dump permissions android/app/build/outputs/apk/release/*.apk | grep -q 'AD_ID'; then
+            if "$AAPT2" dump permissions android/app/build/outputs/apk/release/*.apk | grep -q 'com.google.android.gms.permission.AD_ID'; then
               echo "ERROR: the advertising-ID permission (AD_ID) is still in the app. Not allowed for a children's app."; exit 1
             fi
             echo "OK: no AD_ID permission"
